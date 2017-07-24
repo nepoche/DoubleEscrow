@@ -70,5 +70,9 @@ contract Escrow {
 		Refunded();
 	}
 
+	function getState() returns (State) {
+		return state;
+	}
+
 	function () { throw; }
 }
