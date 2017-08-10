@@ -1,4 +1,4 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.13;
 
 contract Escrow {
 
@@ -50,6 +50,7 @@ contract Escrow {
 		if (!seller.send(this.balance)) throw;
 		state = State.Inactive;
 		price = 0;
+		seller = 0;
 		Aborted();
 	}
 
@@ -64,6 +65,8 @@ contract Escrow {
 		if (!seller.send(this.balance)) throw;
 		state = State.Inactive;
 		price = 0;
+		seller = 0;
+		buyer = 0;
 		ItemReceived();
 	}
 
@@ -72,6 +75,8 @@ contract Escrow {
 		if (!seller.send(this.balance)) throw;
 		state = State.Inactive;
 		price = 0;
+		seller = 0;
+		buyer = 0;
 		Refunded();
 	}
 

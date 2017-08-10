@@ -20,6 +20,7 @@ var seller;
 var buyer;
 var user;
 var currentState;
+var price;
 
 window.App = {
 
@@ -40,12 +41,15 @@ window.App = {
       }
 
       accounts = accs;
-      account = accounts[0];
+      account = accounts[1];
       self.setStatus("Initial load of contract state");
 
       self.updatePage(function() {
         App.updateChoices();
       });
+
+      self.listenToEvents();
+
     });
   },
 
@@ -102,7 +106,7 @@ window.App = {
 
     // set up variables for price
     var priceLabel = document.getElementById("price");
-    var price = 0;
+    price = 0;
 
     // get the price from the contract
     Escrow.deployed().then(function(instance){
@@ -216,11 +220,11 @@ window.App = {
   sell: function() {
     this.setStatus("Creating your sale post...");
     var priceInEth = document.getElementById("priceInput").value;
-    var priceInWei = web3.toWei(priceInEth, 'ether');
+    var totalDepositInWei = web3.toWei(priceInEth*2, 'ether');
     var self = this;
 
     Escrow.deployed().then(function(instance){
-      return instance.postItem({value: priceInWei * 2, from: account});
+      return instance.postItem({value: totalDepositInWei, from: account});
     })
     .then(function (){
       self.setStatus("Sale posted.");
@@ -248,7 +252,21 @@ window.App = {
   },
 
   purchase: function() {
+    this.setStatus("Purchasing Item...");
+    var self = this;
 
+    App.getPriceInWei(function() {
+      Escrow.deployed().then(function(instance){
+        return instance.confirmPurchase({from: account, value: web3.toWei(price*2)});
+      })
+      .then(function (){
+        self.setStatus("Item successfully purchased. Please wait for the item to arrive.");
+      })
+      .catch(function(e){
+        console.log(e);
+        self.setStatus("Error purchasing item, please check logs.");
+      });
+    })
   },
 
   refund: function() {
@@ -268,18 +286,102 @@ window.App = {
   },
 
   confirm: function() {
-    this.setStatus("Confirming purchase...");
+    this.setStatus("Confirming item is as expected...");
     var self = this;
 
     Escrow.deployed().then(function(instance){
       return instance.confirmReceived({from: account});
     })
     .then(function (){
-      self.setStatus("Purchase confirmed");
+      self.setStatus("Item validated, funds distributed.");
     })
     .catch(function(e){
       self.setStatus("Error confirming purchase, are you sure you are the buyer?");
     });
+  },
+
+  getPriceInWei: function(callback) {
+    Escrow.deployed().then(function(instance){
+      return instance.price.call();
+    }).then(function(response){
+      price = response.toString(10).valueOf();
+    });
+    callback();
+  },
+
+  listenToEvents: function() {
+
+    Escrow.deployed().then(function(escrow){
+      var createdEvent = escrow.Created();
+      createdEvent.watch(function(err, res) {
+        if (err) {
+          console.log(err);
+          return;
+        }
+
+        App.updatePage(function() {
+          App.updateChoices();
+        });
+      });
+    });
+
+    Escrow.deployed().then(function(escrow){
+      var abortedEvent = escrow.Aborted();
+      abortedEvent.watch(function(err, res) {
+        if (err) {
+          console.log(err);
+          return;
+        }
+
+        App.updatePage(function() {
+          App.updateChoices();
+        });
+
+      });
+    });
+
+    Escrow.deployed().then(function(escrow){
+      var purchaseConfirmedEvent = escrow.PurchaseConfirmed();
+      purchaseConfirmedEvent.watch(function(err, res) {
+        if (err) {
+          console.log(err);
+          return;
+        }
+
+        App.updatePage(function() {
+          App.updateChoices();
+        });
+      });
+    });
+
+    Escrow.deployed().then(function(escrow){
+      var receivedEvent = escrow.ItemReceived();
+      receivedEvent.watch(function(err, res) {
+        if (err) {
+          console.log(err);
+          return;
+        }
+
+        App.updatePage(function() {
+          App.updateChoices();
+        });
+      });
+    });
+
+    Escrow.deployed().then(function(escrow){
+      var refundedEvent = escrow.Refunded();
+      refundedEvent.watch(function(err, res) {
+        if (err) {
+          console.log(err);
+          return;
+        }
+
+        App.updatePage(function() {
+          App.updateChoices();
+        });
+      });
+    });
+
   }
 
 };
