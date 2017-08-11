@@ -41,25 +41,17 @@ window.App = {
       }
 
       accounts = accs;
-      account = accounts[1];
+      account = accounts[0];
       self.setStatus("Initial load of contract state");
 
-      self.updatePage(function() {
-        App.updateChoices();
-      });
+      self.updatePage();
 
       self.listenToEvents();
 
     });
   },
 
-  updatePage: function(callback) {
-    this.checkState();
-    this.checkUser();
-    callback();
-  },
-
-  checkState: function() {
+  updatePage: function() {
     Escrow.deployed().then(function(instance) {
       return instance.state.call(); 
     })
@@ -105,7 +97,7 @@ window.App = {
   updateChoices: function() {
 
     // set up variables for price
-    var priceLabel = document.getElementById("price");
+    var priceLabel = document.getElementById("priceInfo");
     price = 0;
 
     // get the price from the contract
@@ -116,7 +108,7 @@ window.App = {
       price = response.toString(10).valueOf();
       price = web3.fromWei(price, 'ether');
       if (price != 0)
-        priceLabel.innerHTML = "Current Price in ETH:" + price;
+        priceLabel.innerHTML = "Current Price in ETH: <span id=\"price\">" + price + "</span>";
       else
         priceLabel.innerHTML = "No sellers, sell this item now!";
     });
@@ -188,6 +180,7 @@ window.App = {
         // show item is sold
         var notice = document.createElement("h3");
         notice.innerHTML = "This item has been sold.";
+        document.getElementById("selectAction").appendChild(notice);
       }
     }
 
@@ -255,18 +248,18 @@ window.App = {
     this.setStatus("Purchasing Item...");
     var self = this;
 
-    App.getPriceInWei(function() {
-      Escrow.deployed().then(function(instance){
-        return instance.confirmPurchase({from: account, value: web3.toWei(price*2)});
-      })
-      .then(function (){
-        self.setStatus("Item successfully purchased. Please wait for the item to arrive.");
-      })
-      .catch(function(e){
-        console.log(e);
-        self.setStatus("Error purchasing item, please check logs.");
-      });
+    App.getPrice();
+
+    Escrow.deployed().then(function(instance){
+      return instance.confirmPurchase({from: account, value: web3.toWei(price*2, 'ether')});
     })
+    .then(function (){
+      self.setStatus("Item successfully purchased. Please wait for the item to arrive.");
+    })
+    .catch(function(e){
+      console.log(e);
+      self.setStatus("Error purchasing item, please check logs.");
+    });
   },
 
   refund: function() {
@@ -300,13 +293,8 @@ window.App = {
     });
   },
 
-  getPriceInWei: function(callback) {
-    Escrow.deployed().then(function(instance){
-      return instance.price.call();
-    }).then(function(response){
-      price = response.toString(10).valueOf();
-    });
-    callback();
+  getPrice: function() {
+    price = document.getElementById("price").innerHTML.valueOf();
   },
 
   listenToEvents: function() {
@@ -319,9 +307,11 @@ window.App = {
           return;
         }
 
-        App.updatePage(function() {
-          App.updateChoices();
-        });
+        currentState = 0;
+        if (res.args.seller == account)
+          user = 'seller';
+        App.updateChoices();
+
       });
     });
 
@@ -333,10 +323,7 @@ window.App = {
           return;
         }
 
-        App.updatePage(function() {
-          App.updateChoices();
-        });
-
+        App.updatePage();
       });
     });
 
@@ -348,9 +335,7 @@ window.App = {
           return;
         }
 
-        App.updatePage(function() {
-          App.updateChoices();
-        });
+        App.updatePage();
       });
     });
 
@@ -362,9 +347,7 @@ window.App = {
           return;
         }
 
-        App.updatePage(function() {
-          App.updateChoices();
-        });
+        App.updatePage();
       });
     });
 
@@ -376,9 +359,7 @@ window.App = {
           return;
         }
 
-        App.updatePage(function() {
-          App.updateChoices();
-        });
+        App.updatePage();
       });
     });
 
